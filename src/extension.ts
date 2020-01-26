@@ -49,12 +49,12 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(
       (e: vscode.TextDocumentChangeEvent) =>
-        extension.formatter.instantFormat(e)
+        extension.inScope() && extension.formatter.instantFormat(e)
     )
   );
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((e: vscode.TextDocument) =>
-      extension.refreshData(context)
+      extension.inScope() && extension.refreshData(context)
     )
   );
   context.subscriptions.push(
@@ -238,6 +238,13 @@ export class Extension {
     ) {
       this.refreshData(context);
     }
+  }
+
+  inScope(): boolean {
+    return (
+      vscode.window.activeTextEditor !== undefined &&
+      vscode.window.activeTextEditor.document.languageId === 'beancount'
+    );
   }
 }
 
