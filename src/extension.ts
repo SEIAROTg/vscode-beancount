@@ -181,9 +181,11 @@ export class Extension {
     const flags: BeancountFlag[] = JSON.parse(flagsJson);
     const diagsCollection: { [key: string]: vscode.Diagnostic[] } = {};
     errors.forEach(e => {
+      const file = e.file === '<load>' ? this.getMainBeanFile() : e.file;
+      const line = Math.max(e.line - 1, 0);
       const range = new vscode.Range(
-        new vscode.Position(e.line - 1, 0),
-        new vscode.Position(e.line, 0)
+        new vscode.Position(line, 0),
+        new vscode.Position(line + 1, 0)
       );
       const diag = new vscode.Diagnostic(
         range,
@@ -192,10 +194,10 @@ export class Extension {
       );
       diag.source = 'Beancount';
       diag.code = DIAGNOSTIC_CODES.error;
-      if (diagsCollection[e.file] === undefined) {
-        diagsCollection[e.file] = [];
+      if (diagsCollection[file] === undefined) {
+        diagsCollection[file] = [];
       }
-      diagsCollection[e.file].push(diag);
+      diagsCollection[file].push(diag);
     });
     flags.forEach(f => {
       const warningType = this.flagWarnings[f.flag];
