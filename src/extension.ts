@@ -16,6 +16,11 @@ export function activate(context: vscode.ExtensionContext) {
     extension.favaManager.openFava(true)
   );
 
+  vscode.languages.registerDocumentRangeFormattingEditProvider(
+    'beancount',
+    extension.formatter,
+);
+
   context.subscriptions.push(
     vscode.window.onDidCloseTerminal((terminal: vscode.Terminal) => {
       if (terminal.name === 'Fava') {
@@ -90,8 +95,8 @@ export class Extension {
     this.diagnosticCollection = vscode.languages.createDiagnosticCollection(
       'Beancount'
     );
-    this.formatter = new Formatter();
     this.logger = vscode.window.createOutputChannel('Beancount');
+    this.formatter = new Formatter(this.logger);
     this.flagWarnings = vscode.workspace.getConfiguration('beancount')[
       'flagWarnings'
     ];
@@ -165,15 +170,15 @@ export class Extension {
     run_cmd(
       python3Path,
       pyArgs,
-      (text: string) => {
-        const errorsCompletions = text.split('\n', 3);
-        this.provideDiagnostics(errorsCompletions[0], errorsCompletions[2]);
-        this.completer.updateData(errorsCompletions[1]);
-        this.logger.appendLine('Data refreshed.');
-      },
       cwd ? { cwd } : undefined,
+      undefined,
       str => this.logger.append(str)
-    );
+    ).then((text: string) => {
+      const errorsCompletions = text.split('\n', 3);
+      this.provideDiagnostics(errorsCompletions[0], errorsCompletions[2]);
+      this.completer.updateData(errorsCompletions[1]);
+      this.logger.appendLine('Data refreshed.');
+    }, () => {});
   }
 
   provideDiagnostics(errorsJson: string, flagsJson: string) {

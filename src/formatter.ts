@@ -1,8 +1,11 @@
 'use strict';
 import * as vscode from 'vscode';
 import { Range, Position } from 'vscode';
+import { run_cmd } from './utils';
 
 export class Formatter {
+  constructor(private logger: vscode.OutputChannel) {}
+
   instantFormat(e: vscode.TextDocumentChangeEvent) {
     if (vscode.window.activeTextEditor === undefined) {
       return;
@@ -108,5 +111,37 @@ export class Formatter {
         }
       });
     }
+  }
+
+  async provideDocumentRangeFormattingEdits(
+    document: vscode.TextDocument,
+    range: vscode.Range,
+    options: vscode.FormattingOptions,
+    token: vscode.CancellationToken
+  ) {
+    const wholeLineRange = new vscode.Range(
+      range.start.with(undefined, 0),
+      new vscode.Position(range.end.line + 1, 0),
+    );
+    const text = document.getText(wholeLineRange);
+
+    const python3Path = vscode.workspace.getConfiguration('beancount')['python3Path'];
+    const separatorColumn = vscode.workspace.getConfiguration('beancount')['separatorColumn'];
+    // bean-format doesn't support align by decimal point. Assume two decimal places here.
+    const currencyColumn = separatorColumn + 4;
+    const pyArgs = ['-m', 'beancount.scripts.format', '-c', `${currencyColumn}`];
+    this.logger.appendLine(
+      `running ${python3Path} ${pyArgs} to format file...`
+    );
+    const formattedText = await run_cmd(
+      python3Path,
+      pyArgs,
+      undefined,
+      text,
+      str => this.logger.append(str)
+    );
+    return [
+      vscode.TextEdit.replace(wholeLineRange, formattedText),
+    ];
   }
 }
